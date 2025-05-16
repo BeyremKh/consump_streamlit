@@ -32,7 +32,6 @@ battery_capacity_kWh = 2.5  # Battery capacity [kWh]
 target_annual_load_kWh = 3500  # Target total annual load [kWh]
 
 
-model_error = 0.2
 model_error_low = -0.5
 model_error_high = 0.1
 
@@ -161,10 +160,7 @@ ref_summary = summarize_result(ref_result, pv_day, h0_profile_kWh_scaled)
 model_summary = summarize_result(model_result, pv_day, h0_profile_kWh_scaled)
 
 
-if model_error_low is not None and model_error_high is not None:
-    error_info = f"Custom error: [{model_error_low}, {model_error_high}] kWh"
-else:
-    error_info = f"Symmetric error: ±{model_error} kWh"
+error_info = f"Custom error: [{model_error_low}, {model_error_high}] kWh"
 
 print(f"=== Single Summer Day ===\n({error_info})")
 print("Reference Meter:")
