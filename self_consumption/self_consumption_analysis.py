@@ -19,9 +19,25 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-h0_profile = pd.read_csv(
-    "model_evaluation_aws/h0_profile_15min_daily_avg.csv", header=None
-).values.flatten()
+from pathlib import Path
+
+# Get the directory where this script is located
+SCRIPT_DIR = Path(__file__).parent
+DATA_DIR = SCRIPT_DIR.parent / "data"
+DATA_FILE = DATA_DIR / "h0_profile_15min_daily_avg.csv"
+
+try:
+    # Try to load the data file
+    h0_profile = pd.read_csv(DATA_FILE, header=None).values.flatten()
+except FileNotFoundError:
+    # Generate sample data if file not found
+    print(f"Data file not found at {DATA_FILE}, generating sample data...")    # Generate a simple daily pattern (higher during the day, lower at night)
+    hours = np.linspace(0, 24, 96)  # 15-minute intervals
+    h0_profile = 0.5 + 0.5 * np.sin(2 * np.pi * (hours - 6) / 24)  # Sinusoidal pattern
+    h0_profile = np.tile(h0_profile, 365)  # Repeat for a year
+    # Save the sample data for future use
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(h0_profile).to_csv(DATA_FILE, index=False, header=False)
 
 # 1. Scale H0 profile to 3500 kWh/year
 # --- Physical/System Parameters ---

@@ -1,8 +1,9 @@
-import streamlit as st
+from pathlib import Path
 import numpy as np
 import pandas as pd
-import self_consumption_analysis as sca
 import plotly.graph_objs as go
+import streamlit as st
+import self_consumption_analysis as sca
 
 st.set_page_config(
     page_title="PV-Battery Self-Consumption Dashboard",
@@ -19,15 +20,24 @@ model_error_low = st.sidebar.number_input("Model Error Low (kWh)", value=-0.5, s
 model_error_high = st.sidebar.number_input("Model Error High (kWh)", value=0.1, step=0.01)
 period = st.sidebar.selectbox("Simulation Period", ["Single Day", "One Month", "One Year"])
 
+# Get the directory where this script is located
+SCRIPT_DIR = Path(__file__).parent
+DATA_DIR = SCRIPT_DIR.parent / "data"
+DATA_FILE = DATA_DIR / "h0_profile_15min_daily_avg.csv"
+
 # Load H0 profile data
-h0_profile = pd.read_csv("model_evaluation_aws/h0_profile_15min_daily_avg.csv", header=None).values.flatten()
-intervals_per_day = 96
-h0_profile_kW = h0_profile / 1000
-h0_profile_kWh = h0_profile_kW * 0.25
-h0_daily_kWh = np.sum(h0_profile_kWh)
-target_annual_load_kWh = 3500
-scaling_factor = target_annual_load_kWh / (h0_daily_kWh * 365)
-h0_profile_kWh_scaled = h0_profile_kWh * scaling_factor
+try:
+    h0_profile = pd.read_csv(DATA_FILE, header=None).values.flatten()
+    intervals_per_day = 96
+    h0_profile_kW = h0_profile / 1000
+    h0_profile_kWh = h0_profile_kW * 0.25
+    h0_daily_kWh = np.sum(h0_profile_kWh)
+    target_annual_load_kWh = 3500
+    scaling_factor = target_annual_load_kWh / (h0_daily_kWh * 365)
+    h0_profile_kWh_scaled = h0_profile_kWh * scaling_factor
+except FileNotFoundError:
+    st.error(f"Error: Could not find the required data file at {DATA_FILE}")
+    st.stop()
 
 def run_simulation(period, pv_system_size, battery_capacity, error_low, error_high):
     """
