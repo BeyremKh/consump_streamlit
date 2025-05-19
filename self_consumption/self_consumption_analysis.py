@@ -16,51 +16,28 @@ Compares reference meter vs. model with ±50W error.
 
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
+from demandlib import bdew
 
+model_error_low = 0
+model_error_high = 0
+target_annual_load_kWh = 3500
+season = "summer"
 
-from pathlib import Path
+# Load H0 profile from BDew
+def load_h0_profile(target_annual_load_kWh=3500):
+    e_slp = bdew.ElecSlp(year=2025)
+    scaled_profiles = e_slp.get_scaled_profiles({"h0": target_annual_load_kWh})
+    h0_profile_kWh = scaled_profiles["h0"]
+    return h0_profile_kWh
 
-# Get the directory where this script is located
-SCRIPT_DIR = Path(__file__).parent
-DATA_DIR = SCRIPT_DIR.parent / "data"
-DATA_FILE = DATA_DIR / "h0_profile_15min_daily_avg.csv"
-
-try:
-    # Try to load the data file
-    h0_profile = pd.read_csv(DATA_FILE, header=None).values.flatten()
-except FileNotFoundError:
-    # Generate sample data if file not found
-    print(f"Data file not found at {DATA_FILE}, generating sample data...")    # Generate a simple daily pattern (higher during the day, lower at night)
-    hours = np.linspace(0, 24, 96)  # 15-minute intervals
-    h0_profile = 0.5 + 0.5 * np.sin(2 * np.pi * (hours - 6) / 24)  # Sinusoidal pattern
-    h0_profile = np.tile(h0_profile, 365)  # Repeat for a year
-    # Save the sample data for future use
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(h0_profile).to_csv(DATA_FILE, index=False, header=False)
-
-# 1. Scale H0 profile to 3500 kWh/year
-# --- Physical/System Parameters ---
-intervals_per_day = 96
-intervals_per_year = intervals_per_day * 365
-pv_system_size_kWp = 1.8  # PV system size [kWp]
-battery_capacity_kWh = 2.5  # Battery capacity [kWh]
-target_annual_load_kWh = 3500  # Target total annual load [kWh]
-
-
-model_error_low = -0.5
-model_error_high = 0.1
-
-
-h0_profile_kW = h0_profile / 1000
-h0_profile_kWh = h0_profile_kW * 0.25
-h0_daily_kWh = np.sum(h0_profile_kWh)
-scaling_factor = target_annual_load_kWh / (h0_daily_kWh * 365)
-h0_profile_kWh_scaled = h0_profile_kWh * scaling_factor
-
-
+h0_profile_kWh_scaled = load_h0_profile(target_annual_load_kWh=target_annual_load_kWh)
+h0_profile_year = load_h0_profile(target_annual_load_kWh)
+intervals_per_day = 96  # 15-min intervals
+num_days = len(h0_profile_year) // intervals_per_day
+h0_profile_year_reshaped = np.array(h0_profile_year[:num_days*intervals_per_day]).reshape((num_days, intervals_per_day))
+h0_profile_kWh_scaled = np.mean(h0_profile_year_reshaped, axis=0)
 # PV profile for 1.8 kWp system (typical summer day bell curve, normalized)
-def typical_pv_day_profile(kWp=1.8, day_type="summer"):
+def typical_pv_day_profile(kWp=1.8, day_type=season):
 
     x = np.linspace(0, 24, intervals_per_day)
     if day_type == "summer":
@@ -74,8 +51,6 @@ def typical_pv_day_profile(kWp=1.8, day_type="summer"):
 
 
 # Battery simulation function
-
-
 def simulate_day(
     h0, pv, battery_capacity=2.5, error_low=0, error_high=0
 ):
@@ -132,7 +107,7 @@ def simulate_day(
     }
 
 
-pv_day = typical_pv_day_profile(kWp=1.8, day_type="summer")
+pv_day = typical_pv_day_profile(kWp=1.8, day_type=season)
 ref_result = simulate_day(
     h0_profile_kWh_scaled,
     pv_day,
@@ -188,7 +163,7 @@ for k, v in model_summary.items():
 
 
 plt.figure(figsize=(15, 8))
-time_axis = np.linspace(0, 24, intervals_per_day)
+time_axis = np.linspace(0, 24, len(h0_profile_kWh_scaled))
 plt.subplot(3, 1, 1)
 plt.plot(time_axis, pv_day, "y-", label="PV Generation")
 plt.plot(time_axis, h0_profile_kWh_scaled, "b-", label="Household Load")
@@ -222,7 +197,7 @@ plt.title(f"Grid Exchange\n({error_info})")
 plt.xlabel("Hour of Day")
 plt.tight_layout()
 plt.savefig("single_day_powerflow.png")
-# plt.show()
+# # plt.show()  # Disabled for Streamlit compatibility
 
 # ---
 
@@ -238,7 +213,7 @@ def seasonal_pv_scale(day):
 pv_year = []
 for day in range(365):
     pv_scale = seasonal_pv_scale(day)
-    pv_day = typical_pv_day_profile(kWp=1.8, day_type="summer") * pv_scale
+    pv_day = typical_pv_day_profile(kWp=1.8, day_type=season) * pv_scale
     pv_year.append(pv_day)
 pv_year = np.concatenate(pv_year)
 
@@ -293,7 +268,7 @@ plt.xlabel("Day of Year")
 plt.ylabel("kWh")
 plt.legend()
 plt.tight_layout()
-plt.show()
+# plt.show()  # Disabled for Streamlit compatibility
 
 # --- Grid Exchange Plot (Import/Export) for 1 Year ---
 plt.figure(figsize=(15, 6))
@@ -344,7 +319,7 @@ plt.xlabel("Day of Year")
 plt.ylabel("kWh")
 plt.legend()
 plt.tight_layout()
-plt.show()
+# plt.show()  # Disabled for Streamlit compatibility
 
 plt.plot(
     days,
@@ -358,12 +333,12 @@ plt.title(f"Daily Energy Flows (1 Year)\n({error_info})")
 plt.grid(True)
 plt.tight_layout()
 plt.savefig("year_energyflows.png")
-# plt.show()
+# # plt.show()  # Disabled for Streamlit compatibility
 
 # ---
 
 h0_month = np.tile(h0_profile_kWh_scaled, 31)
-pv_month = np.tile(typical_pv_day_profile(kWp=1.8, day_type="summer"), 31)
+pv_month = np.tile(typical_pv_day_profile(kWp=1.8, day_type=season), 31)
 ref_month_result = simulate_day(
     h0_month,
     pv_month,
@@ -426,4 +401,4 @@ plt.title(f"Daily Energy Flows (1 Month)\n({error_info})")
 plt.grid(True)
 plt.tight_layout()
 plt.savefig("month_energyflows.png")
-# plt.show()
+# # plt.show()  # Disabled for Streamlit compatibility
