@@ -4,6 +4,9 @@ import plotly.graph_objects as go
 import pandas as pd
 from self_consumption import self_consumption_analysis as sca
 from self_consumption.self_consumption_analysis import load_h0_profile
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 st.set_page_config(
     page_title="PV-Battery Self-Consumption Dashboard",
