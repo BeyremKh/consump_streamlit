@@ -2,8 +2,8 @@ import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
 import pandas as pd
-import self_consumption_analysis as sca
-from self_consumption_analysis import load_h0_profile
+from self_consumption import self_consumption_analysis as sca
+from self_consumption.self_consumption_analysis import load_h0_profile
 
 st.set_page_config(
     page_title="PV-Battery Self-Consumption Dashboard",
