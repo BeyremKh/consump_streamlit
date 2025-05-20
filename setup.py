@@ -1,5 +1,5 @@
-from setuptools import setup, find_packages
 
+from setuptools import setup, find_packages
 setup(
     name="consumption-app",
     version="0.1.0",
@@ -10,7 +10,8 @@ setup(
         "numpy>=1.21.0",
         "pandas>=1.3.0",
         "plotly>=5.3.0",
-        "matplotlib>=3.4.0"
+        "matplotlib>=3.4.0",
+        "demandlib>=0.2.2"
     ],
     extras_require={
         "dev": [
